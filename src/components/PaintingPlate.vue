@@ -1,7 +1,17 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useTerm } from '../composables/useTerm'
-import { ALBUM, closeness, LEAF_ORDINALS, leafImage, leafOfPlate, leafPage, type Plate } from '../data/paintings'
+import {
+  closeness,
+  HOLDER,
+  leafLabel,
+  LICENSE,
+  paintingImage,
+  paintingLabel,
+  paintingOfPlate,
+  paintingPage,
+  type Plate,
+} from '../data/paintings'
 import { onColor } from '../utils/color'
 
 /**
@@ -12,9 +22,11 @@ const props = defineProps<{ plate: Plate }>()
 const { term } = useTerm()
 
 const pick = computed(() => props.plate)
-const leaf = computed(() => leafOfPlate(pick.value))
-const ordinal = computed(() => LEAF_ORDINALS[leaf.value.order - 1])
-const src = computed(() => leafImage(leaf.value))
+const painting = computed(() => paintingOfPlate(pick.value))
+const label = computed(() => paintingLabel(painting.value))
+/** 右栏小字：册页写第几开，其余写形制 */
+const kicker = computed(() => leafLabel(painting.value) || painting.value.format)
+const src = computed(() => paintingImage(painting.value))
 
 const status = ref<'loading' | 'ready' | 'error'>('loading')
 watch(src, () => {
@@ -27,29 +39,53 @@ const verdict = computed(() => {
   if (de <= 3) return `画上这一处，几乎就是${name}。`
   if (de <= 7) return `画上这一处，与${name}相近。`
   if (de <= 10) return `画上这一处，与${name}略有出入。`
-  return `这幅画是按题材配的。画上最接近${name}的一处，也只得其意。`
+  if (de <= 20) return `这幅画是按题材配的。画上最接近${name}的一处，也只得其意。`
+  return `这幅画是按题材配的，画上并没有${name}。圈出来的只是最接近的一处，差得还远。`
 })
 
-/** 放大镜：把同一张图放大 ZOOM 倍，让取色点落在圆心 */
-const ZOOM = 6
+/**
+ * 画的显示宽度：竖幅按高度封顶，小图最多放大到原图的 1.4 倍，免得发虚。
+ * 横幅的册页算出来比栏宽还宽，照旧撑满。
+ */
+const UPSCALE = 1.4
+const mountStyle = computed(() => {
+  const { w, h } = painting.value
+  return {
+    '--leaf-w': `min(${Math.round(w * UPSCALE)}px, calc(min(80vh, 760px) * ${(w / h).toFixed(4)}))`,
+  }
+})
+
+/**
+ * 放大镜：把同一张图放大若干倍，让取色点落在圆心。
+ * 大图放大 6 倍；小图少放大一些，放大镜里的像素才不至于太糊。
+ */
+const zoom = computed(() => Math.min(6, Math.max(3, painting.value.w / 100)))
 const loupe = computed(() => {
-  const ratio = leaf.value.w / leaf.value.h
-  const kx = ZOOM
-  const ky = ZOOM / ratio
+  const ratio = painting.value.w / painting.value.h
+  const kx = zoom.value
+  const ky = zoom.value / ratio
   const px = (0.5 - (pick.value.x / 100) * kx) / (1 - kx)
   const py = (0.5 - (pick.value.y / 100) * ky) / (1 - ky)
   return {
     backgroundImage: `url(${src.value})`,
-    backgroundSize: `${ZOOM * 100}% auto`,
+    backgroundSize: `${zoom.value * 100}% auto`,
     backgroundPosition: `${(px * 100).toFixed(2)}% ${(py * 100).toFixed(2)}%`,
+    // 圆心小圈的大小跟着倍数走，始终约等于取平均色的那一小块
+    '--dot': `${(zoom.value * 2.25).toFixed(2)}%`,
   }
 })
 
 const alt = computed(
   () =>
-    `${ALBUM.artist}《${ALBUM.title}》第${ordinal.value}开，馆方题名 ${leaf.value.subtitle}。` +
+    `${label.value}，馆方题名 ${painting.value.subtitle}。` +
     `${term.value.name}的取色点在画面左起 ${Math.round(pick.value.x)}%、上起 ${Math.round(pick.value.y)}% 处。`,
 )
+
+const credit = computed(() => {
+  const p = painting.value
+  const who = p.years ? `${p.artist}（${p.years}）` : p.artist
+  return `${who}《${p.work}》，${p.dynasty}，${p.date}，${p.format}，${p.medium}。${HOLDER}藏，开放图像（${LICENSE}）。`
+})
 </script>
 
 <template>
@@ -61,14 +97,14 @@ const alt = computed(
       </header>
 
       <div v-reveal="120" class="plate__grid">
-        <figure class="mount">
-          <div class="leaf" :style="{ aspectRatio: `${leaf.w} / ${leaf.h}` }">
+        <figure class="mount" :style="mountStyle">
+          <div class="leaf" :style="{ aspectRatio: `${painting.w} / ${painting.h}` }">
             <img
               :key="src"
               :class="{ 'is-ready': status === 'ready' }"
               :src="src"
-              :width="leaf.w"
-              :height="leaf.h"
+              :width="painting.w"
+              :height="painting.h"
               :alt="alt"
               decoding="async"
               referrerpolicy="no-referrer"
@@ -77,8 +113,8 @@ const alt = computed(
             />
 
             <p v-if="status === 'error'" class="leaf__error">
-              这一开的图片没有载入。刷新页面试试，或者
-              <a :href="leafPage(leaf)" target="_blank" rel="noopener noreferrer">到馆方页面看原作</a>。
+              这幅画的图片没有载入。刷新页面试试，或者
+              <a :href="paintingPage(painting)" target="_blank" rel="noopener noreferrer">到馆方页面看原作</a>。
             </p>
 
             <span
@@ -93,13 +129,13 @@ const alt = computed(
           </div>
 
           <figcaption class="mount__caption">
-            <span>{{ ALBUM.artist }}《{{ ALBUM.title }}》第{{ ordinal }}开</span>
-            <span class="latin">{{ leaf.subtitle }}</span>
+            <span>{{ label }}</span>
+            <span class="latin">{{ painting.subtitle }}</span>
           </figcaption>
         </figure>
 
         <div class="found">
-          <p class="found__leaf">第{{ ordinal }}开<span>{{ leaf.name }}</span></p>
+          <p class="found__leaf">{{ kicker }}<span>{{ painting.name }}</span></p>
           <h3 class="found__title">到画里找{{ term.color.name }}</h3>
           <p class="found__verdict">{{ verdict }}</p>
 
@@ -122,17 +158,17 @@ const alt = computed(
           </p>
 
           <p class="found__credit">
-            {{ ALBUM.artist }}（{{ ALBUM.years }}）《{{ ALBUM.title }}》，{{ ALBUM.dynasty }}，{{ ALBUM.date }}，{{ ALBUM.medium }}。{{ ALBUM.holder }}藏，开放图像（{{ ALBUM.license }}）。
+            {{ credit }}<template v-if="painting.detail">这里只截了原画的一段。</template>
           </p>
-          <a class="link found__link" :href="leafPage(leaf)" target="_blank" rel="noopener noreferrer">
+          <a class="link found__link" :href="paintingPage(painting)" target="_blank" rel="noopener noreferrer">
             到馆方页面看原作<span aria-hidden="true">↗</span>
           </a>
         </div>
       </div>
 
       <p v-reveal class="plate__note">
-        画是按题材配的：画的是这个节气的花，才配给这个节气。画上圈出来的，是用程序找到的最接近节气色的一处；色差按
-        CIEDE2000 计算，数值越小越接近，取的是那一点附近一小块的平均色，避开了印章与裱边。中文题名据馆方英文题名意译，不是画上原题。
+        画是按题材配的：画的是这个节气的物候、花木或景致，才配给这个节气，颜色对不对得上不作为条件。画上圈出来的，是用程序找到的最接近节气色的一处；色差按
+        CIEDE2000 计算，数值越小越接近，取的是那一点附近一小块的平均色，避开了印章、题跋与裱边。网页用图裁去了裱边，标“局部”的只截了原画的一段。中文题名有馆方中文名的照录，没有的据英文题名意译，都不一定是画上原题。
       </p>
     </div>
   </section>
@@ -159,7 +195,12 @@ const alt = computed(
 
 /* ── 画心与裱边 ── */
 .mount {
-  padding: clamp(12px, 1.8vw, 26px);
+  --pad: clamp(12px, 1.8vw, 26px);
+  box-sizing: border-box;
+  justify-self: center;
+  width: 100%;
+  max-width: calc(var(--leaf-w) + 2 * var(--pad));
+  padding: var(--pad);
   padding-bottom: 0;
   background: var(--paper-bright);
   box-shadow:
@@ -330,9 +371,9 @@ const alt = computed(
 .loupe i {
   position: absolute;
   inset: 50% auto auto 50%;
-  width: 20px;
-  height: 20px;
-  margin: -10px 0 0 -10px;
+  width: var(--dot, 13.5%);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
   border: 1.5px solid var(--paper-bright);
   border-radius: 50%;
   box-shadow:

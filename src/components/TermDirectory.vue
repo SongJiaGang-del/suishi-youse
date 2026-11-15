@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useTerm } from '../composables/useTerm'
-import { leafImage, leafOfPlate, plateOfTerm } from '../data/paintings'
+import { paintingImage, paintingOfPlate, plateOfTerm } from '../data/paintings'
 import { SEASONS, type Term } from '../data/terms'
 import { onColor } from '../utils/color'
 
@@ -14,12 +14,13 @@ const pad = (n: number) => String(n).padStart(2, '0')
 
 function cardOf(term: Term) {
   const plate = plateOfTerm(term.index)
+  const painting = plate ? paintingOfPlate(plate) : null
   return {
     term,
     on: onColor(term.color.hex),
-    image: plate ? leafImage(leafOfPlate(plate)) : null,
+    image: painting ? paintingImage(painting) : null,
     focus: plate ? `${plate.focus[0]}% ${plate.focus[1]}%` : undefined,
-    alt: plate ? `古画局部：${leafOfPlate(plate).name}` : '',
+    alt: painting ? `古画局部：${painting.artist}《${painting.name}》` : '',
   }
 }
 
