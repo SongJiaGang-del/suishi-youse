@@ -1,8 +1,14 @@
 <script setup lang="ts">
+import { useRoute } from 'vue-router'
 import { useTerm } from '../composables/useTerm'
 import { TERMS } from '../data/terms'
 
-const { now } = useTerm()
+const route = useRoute()
+const { now, todayTerm } = useTerm()
+
+function toTop() {
+  if (route.name === 'home') window.scrollTo({ top: 0, behavior: 'smooth' })
+}
 </script>
 
 <template>
@@ -20,15 +26,14 @@ const { now } = useTerm()
       <div class="footer__about">
         <h2>关于这个网站</h2>
         <p>
-          岁时有色是一个文化专题网站，为每个节气配一种传统色。色名取自通行的中国传统色名，色值是为屏幕拟定的近似值；交节日期每年略有浮动，以当年天文年历为准。
+          岁时有色是一个文化专题网站，为每个节气配一种传统色，再配上物候、习俗、时令吃食和一首诗。色名取自通行的中国传统色名，色值是为屏幕拟定的近似值；交节日期每年略有浮动，以当年天文年历为准。画作来自博物馆的开放获取藏品。
         </p>
       </div>
 
       <nav class="footer__nav" aria-label="页脚导航">
-        <a href="#top">首页</a>
-        <a href="#wheel">节气</a>
-        <a href="#seasons">四季</a>
-        <a href="#palette">色谱</a>
+        <RouterLink :to="{ name: 'home' }" @click="toTop">岁时轮</RouterLink>
+        <RouterLink :to="{ name: 'home', hash: '#directory' }">二十四节气目录</RouterLink>
+        <RouterLink :to="{ name: 'term', params: { slug: todayTerm.slug } }">今日 · {{ todayTerm.name }}</RouterLink>
       </nav>
     </div>
 

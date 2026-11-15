@@ -14,7 +14,7 @@ const { todayTerm, dayOfTerm } = useTerm()
       </p>
 
       <p v-reveal="160" class="preface__note">
-        今天是{{ todayTerm.name }}第 {{ dayOfTerm }} 日，页面用的是{{ todayTerm.color.name }}。往下转动岁时轮，可以把整页换成任何一个节气的颜色。
+        今天是{{ todayTerm.name }}第 {{ dayOfTerm }} 日，所以这一页用的是{{ todayTerm.color.name }}。从上面的岁时轮或下面的目录走进任何一个节气，那一页就换成它自己的颜色。
       </p>
     </div>
   </section>

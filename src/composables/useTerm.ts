@@ -5,7 +5,7 @@ import { deepOf, onColor, washOf } from '../utils/color'
 const now = new Date()
 const today = termOfDate(now)
 
-/** 当前页面主色所属的节气（默认是今天所在的节气，可在岁时轮上切换） */
+/** 当前页面主色所属的节气：首页是今天所在的节气，详情页由网址决定 */
 const selectedIndex = ref(today.term.index)
 
 const term = computed<Term>(() => TERMS[selectedIndex.value - 1])
@@ -34,6 +34,7 @@ export function useTerm() {
   bindTheme()
   return {
     now,
+    today,
     todayTerm: today.term,
     dayOfTerm: today.dayOfTerm,
     term,

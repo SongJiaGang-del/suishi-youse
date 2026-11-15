@@ -5,6 +5,10 @@ export interface Term {
   index: number
   name: string
   pinyin: string
+  /** 网址里用的名字：去掉声调与空格的拼音，如 lidong */
+  slug: string
+  /** 交节时太阳所在的黄经，度 */
+  longitude: number
   /** 交节的大致公历日期（用于“今日节气”判断；正式版换成逐年的精确日期表） */
   month: number
   day: number
@@ -66,6 +70,8 @@ export const TERMS: Term[] = ROWS.map((r, i) => {
     index: i + 1,
     name: r[0],
     pinyin: r[1],
+    slug: r[1].normalize('NFD').replace(/[^a-z]/g, ''),
+    longitude: (315 + i * 15) % 360,
     month: r[2],
     day: r[3],
     dateLabel: r[4],
@@ -97,20 +103,50 @@ export const SEASONS: Season[] = SEASON_META.map(([key, char, verb]) => {
   return { key, char, verb, range: `${terms[0].name}至${terms[5].name}`, terms }
 })
 
-/** 给定日期所在的节气，以及这是该节气的第几天 */
-export function termOfDate(date: Date): { term: Term; dayOfTerm: number } {
+export function termBySlug(slug: string): Term | undefined {
+  return TERMS.find((t) => t.slug === slug)
+}
+
+/** 上一个、下一个节气；大寒之后回到立春 */
+export function neighbours(term: Term): { prev: Term; next: Term } {
+  const n = TERMS.length
+  return { prev: TERMS[(term.index - 2 + n) % n], next: TERMS[term.index % n] }
+}
+
+export interface Today {
+  term: Term
+  /** 今天是这个节气的第几天，交节当天算第 1 天 */
+  dayOfTerm: number
+  /** 这个节气一共多少天 */
+  length: number
+  next: Term
+  /** 距下一个节气交节还有几天 */
+  daysToNext: number
+}
+
+const DAY = 86_400_000
+
+/** 给定日期所在的节气，这是第几天，离下一个节气还有几天 */
+export function termOfDate(date: Date): Today {
   const y = date.getFullYear()
   const today = new Date(y, date.getMonth(), date.getDate()).getTime()
-  // 取去年、今年两年的全部交节日，找出不晚于今天的最近一个
-  let best: { term: Term; start: number } | null = null
-  for (const year of [y - 1, y]) {
-    for (const term of TERMS) {
-      const start = new Date(year, term.month - 1, term.day).getTime()
-      if (start <= today && (!best || start > best.start)) best = { term, start }
-    }
+  // 取去年、今年、明年的全部交节日，排成一条时间线
+  const starts: { term: Term; start: number }[] = []
+  for (const year of [y - 1, y, y + 1]) {
+    for (const term of TERMS) starts.push({ term, start: new Date(year, term.month - 1, term.day).getTime() })
   }
-  const found = best ?? { term: TERMS[0], start: today }
-  return { term: found.term, dayOfTerm: Math.round((today - found.start) / 86_400_000) + 1 }
+  starts.sort((a, b) => a.start - b.start)
+  let i = 0
+  while (i + 1 < starts.length && starts[i + 1].start <= today) i++
+  const cur = starts[i]
+  const nxt = starts[i + 1]
+  return {
+    term: cur.term,
+    dayOfTerm: Math.round((today - cur.start) / DAY) + 1,
+    length: Math.round((nxt.start - cur.start) / DAY),
+    next: nxt.term,
+    daysToNext: Math.round((nxt.start - today) / DAY),
+  }
 }
 
 const CN_DIGITS = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十']

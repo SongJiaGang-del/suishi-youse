@@ -1,12 +1,6 @@
 <script setup lang="ts">
-import HeroTerm from './components/HeroTerm.vue'
-import PaintingPlate from './components/PaintingPlate.vue'
-import PaletteCard from './components/PaletteCard.vue'
-import PrefaceSection from './components/PrefaceSection.vue'
-import SeasonBands from './components/SeasonBands.vue'
 import SiteFooter from './components/SiteFooter.vue'
 import SiteHeader from './components/SiteHeader.vue'
-import TermWheel from './components/TermWheel.vue'
 import { useCopy } from './composables/useCopy'
 
 const { message } = useCopy()
@@ -15,12 +9,7 @@ const { message } = useCopy()
 <template>
   <SiteHeader />
   <main>
-    <HeroTerm />
-    <PrefaceSection />
-    <PaintingPlate />
-    <TermWheel />
-    <SeasonBands />
-    <PaletteCard />
+    <RouterView />
   </main>
   <SiteFooter />
 

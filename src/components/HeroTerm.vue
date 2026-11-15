@@ -4,8 +4,9 @@ import { useCopy } from '../composables/useCopy'
 import { useTerm } from '../composables/useTerm'
 import { cnDateLabel, ORDINALS } from '../data/terms'
 import { rgbLabel } from '../utils/color'
+import { scrollToId } from '../utils/scroll'
 
-const { term, isToday, dayOfTerm, now, backToToday } = useTerm()
+const { term, isToday, dayOfTerm, now } = useTerm()
 const { copy } = useCopy()
 
 const metaLine = computed(() =>
@@ -21,7 +22,7 @@ const pentadLabels = ['初候', '二候', '三候']
     <!-- 以节气为 key：切换节气时整组内容重新入场 -->
     <div :key="term.index" class="hero__inner">
       <div class="hero__meta">
-        <p class="hero__eyebrow">{{ isToday ? '今日节气' : '正在预览' }}</p>
+        <p class="hero__eyebrow">{{ isToday ? '今日节气' : '二十四节气' }}</p>
         <p class="hero__date">{{ metaLine }}</p>
         <p class="hero__index latin" :aria-label="`二十四节气之第${ORDINALS[term.index - 1]}`">
           <span>{{ String(term.index).padStart(2, '0') }}</span><i>/ 24</i>
@@ -48,8 +49,10 @@ const pentadLabels = ['初候', '二候', '三候']
         </aside>
 
         <div class="hero__actions">
-          <a class="link" href="#wheel">看全年二十四色<span aria-hidden="true">↓</span></a>
-          <button v-if="!isToday" class="link" type="button" @click="backToToday">回到今日节气</button>
+          <button class="link" type="button" @click="scrollToId('read')">
+            往下读{{ term.name }}<span aria-hidden="true">↓</span>
+          </button>
+          <RouterLink class="link" :to="{ name: 'home' }"><span aria-hidden="true">←</span>回到岁时轮</RouterLink>
         </div>
       </div>
 
@@ -193,9 +196,10 @@ const pentadLabels = ['初候', '二候', '三候']
 }
 .chip__copy {
   position: absolute;
+  /* 放在右上角：下面那行 RGB 值在窄卡片里会顶到右边 */
   right: 20px;
-  bottom: 18px;
-  padding: 6px 14px;
+  top: 16px;
+  padding: 4px 12px;
   border: 1px solid var(--ink);
   font-size: var(--fs-14);
   transition:
@@ -390,7 +394,8 @@ const pentadLabels = ['初候', '二候', '三候']
     --title-size: min(30svh, 36vw);
   }
   .hero__eyebrow {
-    letter-spacing: 0.3em;
+    letter-spacing: 0.2em;
+    white-space: nowrap;
   }
   .hero__index span {
     font-size: min(4rem, 13vw);

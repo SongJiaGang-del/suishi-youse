@@ -1,25 +1,36 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { useTerm } from '../composables/useTerm'
+import { scrollToId } from '../utils/scroll'
 
+const route = useRoute()
 const { now } = useTerm()
+/** 首页的页头压在宣纸上，用墨色；详情页压在节气色上，用色上文字 */
+const onPaper = computed(() => route.name !== 'term')
+
+/** 已经在首页时，点“岁时有色”或“节气”回到页面顶部 */
+function toTop() {
+  if (route.name === 'home') window.scrollTo({ top: 0, behavior: 'smooth' })
+}
 const pad = (n: number) => String(n).padStart(2, '0')
 const dateText = `${now.getFullYear()} · ${pad(now.getMonth() + 1)} · ${pad(now.getDate())}`
 const dateIso = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
 </script>
 
 <template>
-  <header class="header">
-    <a class="header__brand" href="#top" aria-label="岁时有色 首页">
+  <header class="header" :class="{ 'header--paper': onPaper }">
+    <RouterLink class="header__brand" :to="{ name: 'home' }" aria-label="岁时有色 首页" @click="toTop">
       <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
         <circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="5" stroke-dasharray="1.6 0.62" />
       </svg>
       <span>岁时有色</span>
-    </a>
+    </RouterLink>
 
     <nav class="header__nav" aria-label="主导航">
-      <a href="#wheel">节气</a>
-      <a href="#palette">色谱</a>
-      <a href="#about">关于</a>
+      <RouterLink :to="{ name: 'home' }" @click="toTop">岁时轮</RouterLink>
+      <RouterLink :to="{ name: 'home', hash: '#directory' }">目录</RouterLink>
+      <button type="button" @click="scrollToId('about')">关于</button>
     </nav>
 
     <time class="header__date latin" :datetime="dateIso">{{ dateText }}</time>
@@ -36,6 +47,9 @@ const dateIso = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDa
   align-items: center;
   padding: 28px var(--gutter);
   color: var(--on-c);
+}
+.header--paper {
+  color: var(--ink);
 }
 
 .header__brand {
@@ -57,11 +71,11 @@ const dateIso = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDa
   letter-spacing: 0.3em;
 }
 
-.header__nav a {
+.header__nav :is(a, button) {
   position: relative;
   padding: 6px 0 6px 0.3em;
 }
-.header__nav a::after {
+.header__nav :is(a, button)::after {
   content: '';
   position: absolute;
   inset: auto 0 0 0.3em;
@@ -71,8 +85,8 @@ const dateIso = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDa
   transform-origin: left;
   transition: transform 0.35s var(--ease);
 }
-.header__nav a:hover::after,
-.header__nav a:focus-visible::after {
+.header__nav :is(a, button):hover::after,
+.header__nav :is(a, button):focus-visible::after {
   transform: scaleX(1);
 }
 

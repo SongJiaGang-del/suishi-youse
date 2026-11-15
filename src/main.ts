@@ -12,6 +12,7 @@ import 'lxgw-wenkai-webfont/lxgwwenkai-regular.css'
 
 import './styles/base.css'
 import App from './App.vue'
+import { router } from './router'
 
 /** v-reveal：元素滚入视口时淡入上移一次 */
 const observer = new IntersectionObserver(
@@ -36,4 +37,4 @@ const reveal: Directive<HTMLElement, number | undefined> = {
   },
 }
 
-createApp(App).directive('reveal', reveal).mount('#app')
+createApp(App).use(router).directive('reveal', reveal).mount('#app')

@@ -1,39 +1,20 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useTerm } from '../composables/useTerm'
-import {
-  ALBUM,
-  closeness,
-  LEAF_ORDINALS,
-  leafImage,
-  leafPage,
-  LEAVES,
-  pickOfTerm,
-  picksOnLeaf,
-} from '../data/paintings'
-import { TERMS } from '../data/terms'
+import { ALBUM, closeness, LEAF_ORDINALS, leafImage, leafOfPlate, leafPage, type Plate } from '../data/paintings'
 import { onColor } from '../utils/color'
 
-const { term, select } = useTerm()
+/**
+ * 画里寻色：这个节气配的那幅古画，和画上最接近节气色的一处。
+ * 没有配到画的节气不渲染这个组件，由节气页决定。
+ */
+const props = defineProps<{ plate: Plate }>()
+const { term } = useTerm()
 
-const pick = computed(() => pickOfTerm(term.value.index))
-const leaf = computed(() => LEAVES[pick.value.leaf - 1])
+const pick = computed(() => props.plate)
+const leaf = computed(() => leafOfPlate(pick.value))
 const ordinal = computed(() => LEAF_ORDINALS[leaf.value.order - 1])
 const src = computed(() => leafImage(leaf.value))
-
-/** 同一开上找到的其他节气色 */
-const others = computed(() =>
-  picksOnLeaf(leaf.value.order)
-    .filter((p) => p.term !== term.value.index)
-    .map((p) => ({ ...p, t: TERMS[p.term - 1] })),
-)
-
-/** 册页目录：十开，每开列出落在上面的节气 */
-const index = LEAVES.map((l) => ({
-  leaf: l,
-  ordinal: LEAF_ORDINALS[l.order - 1],
-  terms: picksOnLeaf(l.order).map((p) => TERMS[p.term - 1]),
-}))
 
 const status = ref<'loading' | 'ready' | 'error'>('loading')
 watch(src, () => {
@@ -46,7 +27,7 @@ const verdict = computed(() => {
   if (de <= 3) return `画上这一处，几乎就是${name}。`
   if (de <= 7) return `画上这一处，与${name}相近。`
   if (de <= 10) return `画上这一处，与${name}略有出入。`
-  return `这本册页里找不到更近的${name}，这一处只得其意。`
+  return `这幅画是按题材配的。画上最接近${name}的一处，也只得其意。`
 })
 
 /** 放大镜：把同一张图放大 ZOOM 倍，让取色点落在圆心 */
@@ -76,9 +57,7 @@ const alt = computed(
     <div class="wrap">
       <header class="plate__head">
         <h2 id="plate-title" v-reveal class="section-title">画里寻色</h2>
-        <p v-reveal="80" class="lede">
-          清人张若霭画过一本花鸟册，一共十开。拿二十四个节气色到画里去找，每一色都在某一开上找到了落脚的地方。有的几乎同色，有的只得其意，差多少都写在旁边。
-        </p>
+        <p v-reveal="80" class="lede">{{ pick.why }}</p>
       </header>
 
       <div v-reveal="120" class="plate__grid">
@@ -102,28 +81,15 @@ const alt = computed(
               <a :href="leafPage(leaf)" target="_blank" rel="noopener noreferrer">到馆方页面看原作</a>。
             </p>
 
-            <template v-if="status === 'ready'">
-              <button
-                v-for="p in others"
-                :key="p.term"
-                class="dot"
-                type="button"
-                :style="{ left: `${p.x}%`, top: `${p.y}%` }"
-                :aria-label="`${p.t.name}的${p.t.color.name}也在这一开上，切换到${p.t.name}`"
-                @click="select(p.term)"
-              >
-                <span class="dot__tag" aria-hidden="true">{{ p.t.name }} · {{ p.t.color.name }}</span>
-              </button>
-
-              <span
-                class="mark"
-                :class="{ 'mark--left': pick.x > 62 }"
-                :style="{ left: `${pick.x}%`, top: `${pick.y}%` }"
-                aria-hidden="true"
-              >
-                <span class="mark__tag">{{ term.name }} · {{ term.color.name }}</span>
-              </span>
-            </template>
+            <span
+              v-if="status === 'ready'"
+              class="mark"
+              :class="{ 'mark--left': pick.x > 62 }"
+              :style="{ left: `${pick.x}%`, top: `${pick.y}%` }"
+              aria-hidden="true"
+            >
+              <span class="mark__tag">{{ term.name }} · {{ term.color.name }}</span>
+            </span>
           </div>
 
           <figcaption class="mount__caption">
@@ -134,7 +100,7 @@ const alt = computed(
 
         <div class="found">
           <p class="found__leaf">第{{ ordinal }}开<span>{{ leaf.name }}</span></p>
-          <h3 class="found__title">{{ term.name }}的{{ term.color.name }}</h3>
+          <h3 class="found__title">到画里找{{ term.color.name }}</h3>
           <p class="found__verdict">{{ verdict }}</p>
 
           <div class="found__proof">
@@ -155,17 +121,6 @@ const alt = computed(
             色差 <span class="latin">ΔE {{ pick.de.toFixed(1) }}</span><i aria-hidden="true"></i>{{ closeness(pick.de) }}
           </p>
 
-          <div v-if="others.length" class="found__also">
-            <p>这一开上还有</p>
-            <ul>
-              <li v-for="p in others" :key="p.term">
-                <button type="button" @click="select(p.term)">
-                  <i :style="{ background: p.t.color.hex }" aria-hidden="true"></i>{{ p.t.name }} · {{ p.t.color.name }}
-                </button>
-              </li>
-            </ul>
-          </div>
-
           <p class="found__credit">
             {{ ALBUM.artist }}（{{ ALBUM.years }}）《{{ ALBUM.title }}》，{{ ALBUM.dynasty }}，{{ ALBUM.date }}，{{ ALBUM.medium }}。{{ ALBUM.holder }}藏，开放图像（{{ ALBUM.license }}）。
           </p>
@@ -175,30 +130,10 @@ const alt = computed(
         </div>
       </div>
 
-      <div v-reveal class="album">
-        <h3 class="album__title">册页十开</h3>
-        <ol class="album__list">
-          <li v-for="it in index" :key="it.leaf.order" :class="{ 'is-current': it.leaf.order === leaf.order }">
-            <p class="album__no">第{{ it.ordinal }}开</p>
-            <p class="album__name">{{ it.leaf.name }}</p>
-            <ul class="album__terms">
-              <li v-for="t in it.terms" :key="t.index">
-                <button
-                  type="button"
-                  :style="{ background: t.color.hex }"
-                  :title="`${t.name} · ${t.color.name}`"
-                  :aria-label="`${t.name} · ${t.color.name}`"
-                  :aria-pressed="t.index === term.index"
-                  @click="select(t.index)"
-                ></button>
-              </li>
-            </ul>
-          </li>
-        </ol>
-        <p class="album__note">
-          各开的中文题名据馆方英文题名意译，不是画上原题。色差按 CIEDE2000 计算，数值越小越接近；取色是该点附近一小块的平均色，取点时避开了印章与裱边。
-        </p>
-      </div>
+      <p v-reveal class="plate__note">
+        画是按题材配的：画的是这个节气的花，才配给这个节气。画上圈出来的，是用程序找到的最接近节气色的一处；色差按
+        CIEDE2000 计算，数值越小越接近，取的是那一点附近一小块的平均色，避开了印章与裱边。中文题名据馆方英文题名意译，不是画上原题。
+      </p>
     </div>
   </section>
 </template>
@@ -280,12 +215,9 @@ const alt = computed(
 }
 
 /* ── 取色点：空心圈，圈里看得见画上的原色 ── */
-.mark,
-.dot {
+.mark {
   position: absolute;
   border-radius: 50%;
-}
-.mark {
   width: 36px;
   height: 36px;
   margin: -18px 0 0 -18px;
@@ -324,56 +256,6 @@ const alt = computed(
 .mark--left .mark__tag {
   left: auto;
   right: calc(100% + 14px);
-}
-
-.dot {
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  margin: -15px 0 0 -15px;
-}
-.dot::before {
-  content: '';
-  width: 13px;
-  height: 13px;
-  border: 1.5px solid var(--paper-bright);
-  border-radius: 50%;
-  box-shadow:
-    0 0 0 1px rgb(26 25 23 / 0.6),
-    inset 0 0 0 1px rgb(26 25 23 / 0.45);
-  transition: transform 0.3s var(--ease);
-}
-.dot:hover::before,
-.dot:focus-visible::before {
-  transform: scale(1.6);
-}
-.dot:focus-visible {
-  outline: 2px solid var(--paper-bright);
-  outline-offset: 0;
-  box-shadow: 0 0 0 4px rgb(26 25 23 / 0.6);
-}
-.dot__tag {
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 4px);
-  transform: translate(-50%, 4px);
-  padding: 3px 10px;
-  background: var(--ink);
-  color: var(--paper);
-  font-size: var(--fs-12);
-  letter-spacing: 0.12em;
-  white-space: nowrap;
-  opacity: 0;
-  pointer-events: none;
-  transition:
-    opacity 0.25s,
-    transform 0.25s var(--ease);
-}
-.dot:hover .dot__tag,
-.dot:focus-visible .dot__tag {
-  opacity: 1;
-  transform: translate(-50%, 0);
 }
 
 @keyframes land {
@@ -472,7 +354,8 @@ const alt = computed(
 }
 .pair dt {
   font-size: var(--fs-12);
-  letter-spacing: 0.2em;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
 }
 .pair dd {
   font-size: 1.25rem;
@@ -498,42 +381,6 @@ const alt = computed(
   background: currentColor;
 }
 
-.found__also {
-  margin-top: var(--sp-4);
-  padding-top: var(--sp-2);
-  border-top: 1px solid var(--line);
-}
-.found__also p {
-  font-size: var(--fs-12);
-  letter-spacing: 0.3em;
-  color: var(--ink-2);
-}
-.found__also ul {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 10px;
-}
-.found__also button {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px 6px 8px;
-  border: 1px solid var(--line);
-  font-size: var(--fs-14);
-  letter-spacing: 0.08em;
-  transition: border-color 0.25s;
-}
-.found__also button:hover {
-  border-color: var(--ink);
-}
-.found__also i {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.1);
-}
-
 .found__credit {
   margin-top: var(--sp-4);
   font-size: var(--fs-12);
@@ -546,76 +393,11 @@ const alt = computed(
   color: var(--c-deep);
 }
 
-/* ── 册页目录 ── */
-.album {
-  margin-top: clamp(56px, 7vw, 96px);
-}
-.album__title {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: var(--fs-20);
-  letter-spacing: 0.3em;
-}
-.album__list {
-  display: grid;
-  grid-template-columns: repeat(10, minmax(0, 1fr));
-  margin-top: var(--sp-3);
-  border-top: 1px solid var(--ink);
-}
-.album__list > li {
-  position: relative;
-  padding: 16px 10px 18px 0;
-}
-.album__list > li + li {
-  padding-left: 12px;
-  border-left: 1px solid var(--line);
-}
-/* 当前这一开：顶上压一道主色 */
-.album__list > li.is-current::before {
-  content: '';
-  position: absolute;
-  inset: -1px 0 auto 0;
-  height: 5px;
-  background: var(--c-deep);
-}
-.album__no {
-  font-size: var(--fs-12);
-  letter-spacing: 0.2em;
-  color: var(--ink-2);
-}
-.album__name {
-  margin-top: 2px;
-  min-height: 3.2em;
-  word-break: keep-all;
-  font-family: var(--font-display);
-  font-weight: 600;
-  line-height: 1.6;
-  letter-spacing: 0.08em;
-}
-.album__terms {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 8px;
-}
-.album__terms button {
-  display: block;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.12);
-  transition: transform 0.3s var(--ease);
-}
-.album__terms button:hover {
-  transform: scale(1.15);
-}
-.album__terms button[aria-pressed='true'] {
-  outline: 1.5px solid var(--ink);
-  outline-offset: 3px;
-}
-.album__note {
-  max-width: 46em;
-  margin-top: var(--sp-3);
+.plate__note {
+  max-width: 52em;
+  margin-top: clamp(40px, 5vw, 64px);
+  padding-top: var(--sp-2);
+  border-top: 1px solid var(--line);
   font-size: var(--fs-12);
   line-height: 1.9;
   color: var(--ink-2);
@@ -637,8 +419,7 @@ const alt = computed(
     grid-column: 1;
   }
   .found__proof,
-  .found__de,
-  .found__also {
+  .found__de {
     grid-column: 2;
   }
   .found__proof {
@@ -647,19 +428,6 @@ const alt = computed(
   }
   .found__de {
     grid-row: 4;
-  }
-  .found__also {
-    grid-row: 5 / span 2;
-  }
-  .album__list {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-  }
-  .album__list > li:nth-child(6) {
-    padding-left: 0;
-    border-left: 0;
-  }
-  .album__list > li:nth-child(n + 6) {
-    border-top: 1px solid var(--line);
   }
 }
 
@@ -694,28 +462,6 @@ const alt = computed(
   }
   .mark--left .mark__tag {
     right: calc(100% + 10px);
-  }
-}
-
-@media (max-width: 620px) {
-  .album__list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .album__list > li,
-  .album__list > li + li {
-    padding: 14px 10px 16px 0;
-    border-left: 0;
-    border-top: 1px solid var(--line);
-  }
-  .album__list > li:nth-child(-n + 2) {
-    border-top: 0;
-  }
-  .album__list > li:nth-child(even) {
-    padding-left: 14px;
-    border-left: 1px solid var(--line);
-  }
-  .album__name {
-    min-height: 0;
   }
 }
 

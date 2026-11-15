@@ -2,10 +2,12 @@
 import { computed } from 'vue'
 import { useCopy } from '../composables/useCopy'
 import { useTerm } from '../composables/useTerm'
+import { contentOf } from '../data/content'
 import { INK, onColor, PAPER, rgbLabel } from '../utils/color'
 
 const { term, theme } = useTerm()
 const { copy } = useCopy()
+const note = computed(() => contentOf(term.value).colorNote)
 
 /** 每个节气页都带这四个色彩变量，加上全站固定的宣纸与墨 */
 const swatches = computed(() => [
@@ -21,10 +23,8 @@ const swatches = computed(() => [
   <section id="palette" class="palette section" aria-labelledby="palette-title">
     <div class="wrap">
       <header class="palette__head">
-        <h2 id="palette-title" v-reveal class="section-title">色谱</h2>
-        <p v-reveal="80" class="lede">
-          每个节气不止一个颜色。主色之外各配一组浅色、深色与色上文字色，可以直接拿去用。点任意一格复制色值。
-        </p>
+        <h2 id="palette-title" v-reveal class="section-title">{{ term.name }}的颜色</h2>
+        <p v-reveal="80" class="lede">{{ note }}</p>
       </header>
 
       <div v-reveal="120" class="palette__grid">
@@ -57,7 +57,7 @@ const swatches = computed(() => [
       </div>
 
       <p v-reveal class="palette__more">
-        <a class="link" href="#wheel">在岁时轮上换一个节气<span aria-hidden="true">↑</span></a>
+        主色之外，各配了一组浅色、深色和压在主色上的文字色，这一页用的就是它们。点任意一格可以复制色值。
       </p>
     </div>
   </section>
@@ -176,8 +176,11 @@ const swatches = computed(() => [
 }
 
 .palette__more {
-  margin-top: var(--sp-6);
-  color: var(--c-deep);
+  max-width: 46em;
+  margin-top: var(--sp-3);
+  font-size: var(--fs-14);
+  line-height: 1.9;
+  color: var(--ink-2);
 }
 
 @media (max-width: 860px) {
