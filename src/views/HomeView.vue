@@ -111,6 +111,9 @@ function choose(term: Term, keyboard: boolean) {
 }
 
 .home__grid {
+  /* .home 是 grid，.wrap 左右的 auto 外边距会让它缩成内容宽：
+     预告文字一长就把整屏撑宽。写明 100%，宽度只跟视口走，也和下面各段左对齐 */
+  width: 100%;
   display: grid;
   grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
   grid-template-rows: auto auto;
@@ -247,6 +250,14 @@ function choose(term: Term, keyboard: boolean) {
   margin-top: var(--sp-2);
   border-block: 1px solid var(--line);
 }
+/* 三等分放不下小雪的二候（八个字）：双栏最窄时面板 342px，手机上 350px 上下，一折行面板就长高。
+   放不下的那一栏按内容取宽，另外两栏平分剩下的；放得下时仍是三等分。
+   360px 以下不这么做：三栏都按内容取宽可能比面板还宽，会撑出横向滚动 */
+@media (min-width: 360px) {
+  .panel__pentads {
+    grid-template-columns: repeat(3, minmax(max-content, 1fr));
+  }
+}
 .panel__pentads li {
   padding: 12px 10px 12px 0;
   font-family: var(--font-display);
@@ -280,6 +291,13 @@ function choose(term: Term, keyboard: boolean) {
   justify-content: space-between;
   gap: 14px 24px;
   margin-top: var(--sp-3);
+}
+/* 双栏最窄时（面板 342px），色名一组最长 161px，加按钮 170px 再加 24px 间距就超了，
+   按钮会掉到下一行。两端对齐时这个值只是下限，收小了平时看不出来 */
+@media (min-width: 961px) {
+  .panel__foot {
+    column-gap: 8px;
+  }
 }
 .panel__color {
   display: flex;
