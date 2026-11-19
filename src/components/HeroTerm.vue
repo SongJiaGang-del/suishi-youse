@@ -9,11 +9,23 @@ import { scrollToId } from '../utils/scroll'
 const { term, isToday, dayOfTerm, now } = useTerm()
 const { copy } = useCopy()
 
-const metaLine = computed(() =>
-  isToday.value
-    ? `${now.getFullYear()} 年 ${now.getMonth() + 1} 月 ${now.getDate()} 日 · ${term.value.name}第 ${dayOfTerm} 日`
-    : `${term.value.dateLabel.replace('月', ' 月 ').replace('日', ' 日')}前后交节`,
-)
+/**
+ * 日期分成两行：上一行是日期，下一行是“立冬第 10 天”或“前后交节”。
+ * 数字和它的单位之间用不换行空格连着，窄屏只会在“2026 年”和“11 月 16 日”之间折行，
+ * 不会把“11”和“月”拆在两行；区间的破折号两边用 U+2060 连住，也不会在那里折断。
+ */
+const NB = ' '
+const WJ = '⁠'
+const metaLines = computed<[string, string]>(() => {
+  if (isToday.value) {
+    return [
+      `${now.getFullYear()}${NB}年 ${now.getMonth() + 1}${NB}月 ${now.getDate()}${NB}日`,
+      `${term.value.name}第${NB}${dayOfTerm}${NB}天`,
+    ]
+  }
+  const m = term.value.dateLabel.match(/(\d+)月(\d+)—(\d+)日/)
+  return [m ? `${m[1]}${NB}月 ${m[2]}${WJ}—${WJ}${m[3]}${NB}日` : term.value.dateLabel, '前后交节']
+})
 const pentadLabels = ['初候', '二候', '三候']
 </script>
 
@@ -23,7 +35,10 @@ const pentadLabels = ['初候', '二候', '三候']
     <div :key="term.index" class="hero__inner">
       <div class="hero__meta">
         <p class="hero__eyebrow">{{ isToday ? '今日节气' : '二十四节气' }}</p>
-        <p class="hero__date">{{ metaLine }}</p>
+        <p class="hero__date">
+          <span>{{ metaLines[0] }}</span>
+          <span>{{ metaLines[1] }}</span>
+        </p>
         <p class="hero__index latin" :aria-label="`二十四节气之第${ORDINALS[term.index - 1]}`">
           <span>{{ String(term.index).padStart(2, '0') }}</span><i>/ 24</i>
         </p>
@@ -68,7 +83,7 @@ const pentadLabels = ['初候', '二候', '三候']
         <p class="col col--date"><span class="col__label">交节</span>{{ cnDateLabel(term.dateLabel) }}</p>
       </div>
 
-      <h1 id="hero-title" class="hero__title" :aria-label="term.name">
+      <h1 id="hero-title" v-parallax="0.06" class="hero__title" :aria-label="term.name">
         <span v-for="(ch, i) in term.name" :key="i" aria-hidden="true" :style="{ '--i': i }">{{ ch }}</span>
       </h1>
 
@@ -89,9 +104,11 @@ const pentadLabels = ['初候', '二候', '三候']
   display: grid;
   min-height: 100svh;
   padding: 112px var(--gutter) 48px;
-  background: var(--c);
+  background: var(--c-block);
   color: var(--on-c);
   overflow: hidden;
+  /* 浅色节气的底边一条细线，和下面的宣纸分开；深色节气这条线是透明的 */
+  box-shadow: inset 0 -1px 0 var(--c-edge);
 }
 
 .hero__inner {
@@ -112,12 +129,19 @@ const pentadLabels = ['初候', '二候', '三候']
 .hero__eyebrow {
   font-family: var(--font-display);
   font-weight: 600;
-  letter-spacing: 0.4em;
+  letter-spacing: 0.3em;
 }
 .hero__date {
   margin-top: 4px;
   font-size: var(--fs-14);
   letter-spacing: 0.06em;
+}
+.hero__date span {
+  display: block;
+}
+/* 第二行（“立冬第 10 天”）整行不拆；第一行在窄屏下可以在“年”后折行 */
+.hero__date span + span {
+  white-space: nowrap;
 }
 .hero__index {
   margin-top: var(--sp-4);
@@ -151,13 +175,15 @@ const pentadLabels = ['初候', '二候', '三候']
 }
 .chip__label {
   font-size: var(--fs-12);
-  letter-spacing: 0.3em;
+  letter-spacing: 0.2em;
   color: var(--ink-2);
 }
 .chip__name {
   display: flex;
+  /* 色卡窄时（1024 档只有约 220px）拼音换到下一行，别把“石榴红”挤成“石榴 / 红” */
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: 14px;
+  gap: 0 14px;
   margin-top: 6px;
   font-family: var(--font-display);
   font-weight: 900;
@@ -228,7 +254,7 @@ const pentadLabels = ['初候', '二候', '三候']
 .col {
   padding: 4px 20px 0;
   border-left: 1px solid var(--rule);
-  font-family: var(--font-display);
+  font-family: var(--font-text);
   font-size: 1.25rem;
   letter-spacing: 0.28em;
   line-height: 1.5;
@@ -245,7 +271,7 @@ const pentadLabels = ['初候', '二候', '三候']
   margin-bottom: 1.4em;
   font-family: var(--font-body);
   font-size: var(--fs-12);
-  letter-spacing: 0.3em;
+  letter-spacing: 0.2em;
 }
 .col--verse {
   padding-inline: 26px;
@@ -267,6 +293,8 @@ const pentadLabels = ['初候', '二候', '三候']
   writing-mode: vertical-rl;
   margin-top: -0.06em;
   margin-right: -0.04em;
+  /* 视差：大字比页面慢一点（--py 由 v-parallax 写入，不动效时没有这个变量） */
+  translate: 0 var(--py, 0px);
   font-family: var(--font-display);
   font-weight: 900;
   font-size: var(--title-size);
@@ -345,9 +373,6 @@ const pentadLabels = ['初候', '二候', '三候']
   .hero__index {
     margin-top: var(--sp-2);
   }
-  .hero__date {
-    max-width: 9em;
-  }
   .col--pentad,
   .col--date {
     display: none;
@@ -366,7 +391,7 @@ const pentadLabels = ['初候', '二候', '三候']
     gap: 12px;
     padding-block: 14px;
     border-block: 1px solid var(--rule);
-    font-family: var(--font-display);
+    font-family: var(--font-text);
     font-size: var(--fs-14);
     letter-spacing: 0.1em;
     line-height: 1.5;
@@ -375,7 +400,7 @@ const pentadLabels = ['初候', '二候', '三候']
     display: block;
     font-family: var(--font-body);
     font-size: var(--fs-12);
-    letter-spacing: 0.24em;
+    letter-spacing: 0.16em;
   }
   .chip {
     max-width: 420px;
@@ -414,6 +439,15 @@ const pentadLabels = ['初候', '二候', '三候']
   .hero__pentads-m {
     gap: 8px;
     letter-spacing: 0.04em;
+  }
+}
+
+/* 三等分放不下的一栏（小雪二候“天气上升地气下降”）按内容取宽，另两栏平分剩下的；
+   和首页 .panel__pentads 同一个做法。360px 以下三栏都按内容取宽可能比屏幕还宽，
+   会撑出横向滚动，所以只从 360px 起这样做 */
+@media (max-width: 1000px) and (min-width: 360px) {
+  .hero__pentads-m {
+    grid-template-columns: repeat(3, minmax(max-content, 1fr));
   }
 }
 

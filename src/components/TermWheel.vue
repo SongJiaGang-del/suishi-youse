@@ -108,6 +108,31 @@ onBeforeUnmount(() => mq?.removeEventListener('change', sync))
 
 const viewBox = computed(() => (narrow.value ? '-328 -328 656 656' : '-400 -400 800 800'))
 
+/**
+ * 键盘：24 段只留一个 Tab 停靠点（初始是今日节气，之后跟着焦点走），环上用方向键移动。
+ * 否则键盘用户要连按 24 次 Tab 才能越过这个环，才到得了下面的内容。
+ */
+const stop = ref(today.term.index)
+
+function onFocus(term: Term) {
+  stop.value = term.index
+  emit('preview', term)
+}
+
+function onKey(e: KeyboardEvent, i: number) {
+  if (e.altKey || e.ctrlKey || e.metaKey) return
+  const n = segments.length
+  let to = -1
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') to = (i + 1) % n
+  else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') to = (i + n - 1) % n
+  else if (e.key === 'Home') to = 0
+  else if (e.key === 'End') to = n - 1
+  if (to < 0) return
+  e.preventDefault()
+  const links = (e.currentTarget as SVGAElement).parentElement?.querySelectorAll<SVGAElement>('a.seg')
+  links?.[to]?.focus()
+}
+
 function onPointer(e: PointerEvent, term: Term | null) {
   // 触屏的“悬停”不算数，否则手指抬起后预览会粘住
   if (e.pointerType === 'mouse') emit('preview', term)
@@ -146,9 +171,10 @@ function onPointer(e: PointerEvent, term: Term | null) {
       </g>
 
       <a
-        v-for="s in segments"
+        v-for="(s, i) in segments"
         :key="s.term.index"
         class="seg"
+        :tabindex="s.term.index === stop ? 0 : -1"
         :class="{ 'is-shown': s.term.index === shown.index, 'is-today': s.term.index === today.term.index }"
         :href="s.href"
         :aria-label="`${s.term.name}，${s.term.color.name}，${s.term.dateLabel}${s.term.index === today.term.index ? '，今日节气' : ''}`"
@@ -156,8 +182,9 @@ function onPointer(e: PointerEvent, term: Term | null) {
         :style="{ '--dx': s.dx, '--dy': s.dy }"
         @pointerenter="onPointer($event, s.term)"
         @pointerleave="onPointer($event, null)"
-        @focus="emit('preview', s.term)"
+        @focus="onFocus(s.term)"
         @blur="emit('preview', null)"
+        @keydown="onKey($event, i)"
         @click.prevent="emit('choose', s.term, $event.detail === 0)"
       >
         <path class="seg__arc" :d="s.d" :fill="s.term.color.hex" />
@@ -269,7 +296,7 @@ function onPointer(e: PointerEvent, term: Term | null) {
 .seg__label {
   text-anchor: middle;
   dominant-baseline: central;
-  font-family: var(--font-display);
+  font-family: var(--font-text);
   font-size: 17px;
   fill: var(--ink-2);
   transition:

@@ -5,14 +5,75 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#75878A" />
+    <title>岁时有色 · 二十四节气与中国传统色</title>
     <meta
       name="description"
-      content="岁时有色：把二十四节气与中国传统色对在一起，一个节气，一种颜色，一年读作二十四色。"
+      content="岁时有色：把二十四节气与中国传统色对在一起，一个节气，一种颜色，一年读作二十四色。每个节气配一幅古画、三候、习俗、时令吃食和一首诗。"
     />
-    <title>岁时有色 · 二十四节气与中国传统色</title>
+
+    <!--
+      分享卡片（微信、微博、Telegram、X 等抓取这里的信息）。
+      og:image、twitter:image 以及 og:url、canonical 要写绝对网址，由 vite.config.ts 在构建时补上，
+      见 README 的“部署”一节。全站是同一个 index.html（hash 路由），所以所有页面分享出去都是这张总封面。
+    -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="岁时有色" />
+    <meta property="og:locale" content="zh_CN" />
+    <meta property="og:title" content="岁时有色 · 二十四节气与中国传统色" />
+    <meta
+      property="og:description"
+      content="一个节气，一种颜色，一年读作二十四色。每个节气配一幅古画、三候、习俗、时令吃食和一首诗。"
+    />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="二十四个节气的颜色排成一圈，圆心是立春的松花色，右侧写着“岁时有色”" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="岁时有色 · 二十四节气与中国传统色" />
+    <meta
+      name="twitter:description"
+      content="一个节气，一种颜色，一年读作二十四色。每个节气配一幅古画、三候、习俗、时令吃食和一首诗。"
+    />
+
+    <!-- 没有脚本时，页面只剩下 noscript 里的内容；样式写在这里，因为全站样式是由脚本载入的 -->
+    <noscript>
+      <style>
+        body {
+          margin: 0;
+          padding: 12vh 24px;
+          background: #f5f0e6;
+          color: #2b2a28;
+          font: 16px/2 'Noto Serif SC', 'Songti SC', 'STSong', 'SimSun', serif;
+          text-align: center;
+        }
+        .noscript h1 {
+          margin: 0 0 8px;
+          font-size: 40px;
+          letter-spacing: 0.24em;
+        }
+        .noscript p {
+          max-width: 34em;
+          margin: 0 auto 16px;
+          letter-spacing: 0.08em;
+        }
+        .noscript .terms {
+          color: #6b6862;
+        }
+      </style>
+    </noscript>
   </head>
   <body>
     <div id="app"></div>
+    <noscript>
+      <div class="noscript">
+        <h1>岁时有色</h1>
+        <p>二十四节气与中国传统色：一个节气，一种颜色，一年读作二十四色。</p>
+        <p class="terms">
+          立春 雨水 惊蛰 春分 清明 谷雨　立夏 小满 芒种 夏至 小暑 大暑　立秋 处暑 白露 秋分 寒露 霜降　立冬 小雪 大雪 冬至 小寒 大寒
+        </p>
+        <p>这个网站需要启用 JavaScript 才能浏览，请在浏览器设置里打开后刷新页面。</p>
+      </div>
+    </noscript>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

@@ -20,6 +20,16 @@
   inherits: true;
   initial-value: #dedddb;
 }
+@property --c-block {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #75878a;
+}
+@property --c-edge {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: transparent;
+}
 
 :root {
   /* 基础色（固定） */
@@ -27,6 +37,8 @@
   --paper-bright: #fbf8f1;
   --ink: #2b2a28;
   --ink-2: #6b6862;
+  /* 压在节气浅色（--c-wash）上的次要文字：#6b6862 在冬至、小寒等浅底上只有 3.5–4.0:1，这个值在 24 个节气上都 ≥ 4.7:1 */
+  --ink-2-wash: #57554f;
   --line: #d9d2c3;
 
   /* 主题色（随节气变化，由 useTerm 写入） */
@@ -34,15 +46,22 @@
   --on-c: #1a1917;
   --c-deep: #5a686b;
   --c-wash: #dedddb;
+  /* 大色块铺底色（多数节气等于 --c）与浅色节气的边线（深色节气为透明） */
+  --c-block: #75878a;
+  --c-edge: transparent;
 
-  /* 字体 */
-  --font-display: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'STSong', 'SimSun', serif;
-  --font-kai: 'LXGW WenKai', 'KaiTi', 'STKaiti', 'Kaiti SC', serif;
-  --font-body: 'Noto Sans SC', 'Source Han Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  --font-latin: 'EB Garamond', 'Noto Serif SC', 'Songti SC', serif;
+  /* 字体：全站只用本站自制的“岁时宋”（scripts/build_font.py 生成，只含站内用到的字），
+     400 与 900 两个字重（600 落到 900）。后面的系统宋体只兜底极少数思源宋体里没有的字。
+     几个变量保留下来，是为了组件里“这是标题 / 正文 / 诗 / 西文”的语义还看得出来 */
+  --font-fallback: 'Songti SC', 'STSong', 'SimSun', serif;
+  --font-display: 'Suishi Song', var(--font-fallback);
+  --font-text: 'Suishi Song', var(--font-fallback);
+  --font-kai: 'Suishi Song', var(--font-fallback);
+  --font-body: 'Suishi Song', var(--font-fallback);
+  --font-latin: 'Suishi Song', var(--font-fallback);
 
   /* 字号阶梯 */
-  --fs-12: 0.75rem;
+  --fs-12: 0.8125rem;
   --fs-14: 0.875rem;
   --fs-16: 1rem;
   --fs-20: 1.25rem;
@@ -66,7 +85,14 @@
     --c 0.9s var(--ease),
     --on-c 0.9s var(--ease),
     --c-deep 0.9s var(--ease),
-    --c-wash 0.9s var(--ease);
+    --c-wash 0.9s var(--ease),
+    --c-block 0.9s var(--ease),
+    --c-edge 0.9s var(--ease);
+}
+
+/* 启动期间（见 main.ts）不做换色过渡，免得首次进入时从默认的苍色渐变到当前节气 */
+html.theme-boot {
+  transition: none;
 }
 
 *,
@@ -78,6 +104,10 @@
 html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
+}
+/* Lenis 接管后，浏览器自己的平滑滚动要关掉，否则两层缓动叠在一起会发飘 */
+html.has-lenis {
+  scroll-behavior: auto;
 }
 
 body {
@@ -91,17 +121,24 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* 宣纸：细颗粒 + 横向的帘纹纤维 + 大片深浅不匀，三层叠在所有内容之上 */
+/* 宣纸：细颗粒 + 横向的帘纹纤维 + 大片深浅不匀，三层叠在所有内容之上（帘纹已减淡，免得在浅色大块上显出横条） */
 body::after {
+  --paper-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.1 0 0 0 0 0.09 0 0 0 .13 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --paper-fibre: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='420'%3E%3Cfilter id='f' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.007 .46' numOctaves='2' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .36 0 0 0 0 .3 0 0 0 0 .2 .17 0 0 0 -.07'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
+  --paper-cloud: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='760' height='760'%3E%3Cfilter id='c' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.011' numOctaves='3' seed='4' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .4 0 0 0 0 .32 0 0 0 0 .2 .3 0 0 0 -.12'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23c)'/%3E%3C/svg%3E");
   content: '';
   position: fixed;
   inset: 0;
   z-index: 100;
   pointer-events: none;
-  background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.1 0 0 0 0 0.09 0 0 0 .13 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='420'%3E%3Cfilter id='f' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.007 .46' numOctaves='2' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .36 0 0 0 0 .3 0 0 0 0 .2 .22 0 0 0 -.085'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E"),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='760' height='760'%3E%3Cfilter id='c' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.011' numOctaves='3' seed='4' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .4 0 0 0 0 .32 0 0 0 0 .2 .3 0 0 0 -.12'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23c)'/%3E%3C/svg%3E");
+  background-image: var(--paper-grain), var(--paper-fibre), var(--paper-cloud);
+}
+
+/* 手机与省流量模式：全屏叠层是滚动时的合成成本，只留细颗粒，帘纹与大片不匀不加载 */
+@media (max-width: 760px), (prefers-reduced-data: reduce) {
+  body::after {
+    background-image: var(--paper-grain);
+  }
 }
 
 /*
@@ -138,6 +175,20 @@ ul,
 ol {
   padding: 0;
   list-style: none;
+}
+
+/* 末行不留孤字：标题均衡折行；正文让浏览器把末行补到几个字以上。
+   不支持 text-wrap 的浏览器照常折行，只是可能有孤字，不影响阅读 */
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+p,
+li,
+dd,
+figcaption {
+  text-wrap: pretty;
 }
 
 a {
@@ -219,6 +270,10 @@ svg {
   transition:
     opacity 0.8s var(--ease),
     transform 0.8s var(--ease);
+}
+/* 从视口上边离开的元素停在上方，往回滚时自上而下落进来 */
+.reveal.reveal--above {
+  transform: translateY(-20px);
 }
 .reveal.is-in {
   opacity: 1;

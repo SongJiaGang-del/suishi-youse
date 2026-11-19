@@ -1,6 +1,6 @@
 import { computed, ref, watchEffect } from 'vue'
 import { TERMS, termOfDate, type Term } from '../data/terms'
-import { deepOf, onColor, washOf } from '../utils/color'
+import { blockOf, deepOf, edgeOf, isLight, onColor, washOf } from '../utils/color'
 
 const now = new Date()
 const today = termOfDate(now)
@@ -13,7 +13,15 @@ const isToday = computed(() => selectedIndex.value === today.term.index)
 
 const theme = computed(() => {
   const hex = term.value.color.hex
-  return { main: hex, on: onColor(hex), deep: deepOf(hex), wash: washOf(hex) }
+  return {
+    main: hex,
+    on: onColor(hex),
+    deep: deepOf(hex),
+    wash: washOf(hex),
+    // 大色块铺底的颜色与浅色节气的边线；深色节气的边线是透明的，换节气时淡入淡出
+    block: blockOf(hex),
+    edge: isLight(hex) ? edgeOf(hex) : 'transparent',
+  }
 })
 
 let bound = false
@@ -26,6 +34,8 @@ function bindTheme() {
     s.setProperty('--on-c', theme.value.on)
     s.setProperty('--c-deep', theme.value.deep)
     s.setProperty('--c-wash', theme.value.wash)
+    s.setProperty('--c-block', theme.value.block)
+    s.setProperty('--c-edge', theme.value.edge)
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme.value.main)
   })
 }

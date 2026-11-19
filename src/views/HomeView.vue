@@ -133,7 +133,7 @@ function choose(term: Term, keyboard: boolean) {
   font-family: var(--font-display);
   font-weight: 600;
   font-size: var(--fs-14);
-  letter-spacing: 0.4em;
+  letter-spacing: 0.3em;
   color: var(--ink-2);
 }
 .home__title {
@@ -215,7 +215,7 @@ function choose(term: Term, keyboard: boolean) {
   font-family: var(--font-display);
   font-weight: 600;
   font-size: var(--fs-12);
-  letter-spacing: 0.2em;
+  letter-spacing: 0.16em;
 }
 .panel__name {
   display: flex;
@@ -260,7 +260,7 @@ function choose(term: Term, keyboard: boolean) {
 }
 .panel__pentads li {
   padding: 12px 10px 12px 0;
-  font-family: var(--font-display);
+  font-family: var(--font-text);
   font-size: var(--fs-14);
   line-height: 1.6;
   letter-spacing: 0.06em;
@@ -273,7 +273,7 @@ function choose(term: Term, keyboard: boolean) {
   display: block;
   font-family: var(--font-body);
   font-size: var(--fs-12);
-  letter-spacing: 0.24em;
+  letter-spacing: 0.16em;
   color: var(--ink-2);
 }
 .panel__pentads li.is-now {

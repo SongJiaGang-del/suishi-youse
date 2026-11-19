@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useTerm } from '../composables/useTerm'
-import { paintingImage, paintingOfPlate, plateOfTerm } from '../data/paintings'
+import { paintingThumb, paintingOfPlate, plateOfTerm } from '../data/paintings'
 import { SEASONS, type Term } from '../data/terms'
 import { onColor } from '../utils/color'
 
@@ -18,7 +18,7 @@ function cardOf(term: Term) {
   return {
     term,
     on: onColor(term.color.hex),
-    image: painting ? paintingImage(painting) : null,
+    image: painting ? paintingThumb(painting) : null,
     focus: plate ? `${plate.focus[0]}% ${plate.focus[1]}%` : undefined,
     alt: painting ? `古画局部：${painting.artist}《${painting.name}》` : '',
   }
@@ -65,6 +65,7 @@ const groups = SEASONS.map((s) => ({ ...s, cards: s.terms.map(cardOf) }))
                   v-if="c.image"
                   :src="c.image"
                   :alt="c.alt"
+                  v-parallax="0.03"
                   :style="{ objectPosition: c.focus }"
                   loading="lazy"
                   decoding="async"
@@ -122,7 +123,7 @@ const groups = SEASONS.map((s) => ({ ...s, cards: s.terms.map(cardOf) }))
   display: flex;
   align-items: baseline;
   gap: 0.2em;
-  font-family: var(--font-display);
+  font-family: var(--font-text);
   line-height: 1;
 }
 .season__char {
@@ -174,10 +175,12 @@ const groups = SEASONS.map((s) => ({ ...s, cards: s.terms.map(cardOf) }))
 }
 .card__face img {
   position: absolute;
-  inset: 0;
+  /* 上下各多出 8%，给视差位移留余量，露不出边 */
+  inset: -8% 0;
   width: 100%;
-  height: 100%;
+  height: 116%;
   object-fit: cover;
+  translate: 0 clamp(-22px, var(--py, 0px), 22px);
   transition: transform 0.9s var(--ease);
 }
 /* 画上压一条节气色的边，说明这张笺属于哪种颜色 */

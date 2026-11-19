@@ -14,7 +14,7 @@ const { todayTerm, dayOfTerm } = useTerm()
       </p>
 
       <p v-reveal="160" class="preface__note">
-        今天是{{ todayTerm.name }}第 {{ dayOfTerm }} 日，所以这一页用的是{{ todayTerm.color.name }}。从上面的岁时轮或下面的目录走进任何一个节气，那一页就换成它自己的颜色。
+        今天是{{ todayTerm.name }}第 {{ dayOfTerm }} 天，所以这一页用的是{{ todayTerm.color.name }}。从上面的岁时轮或下面的目录走进任何一个节气，那一页就换成它自己的颜色。
       </p>
     </div>
   </section>
@@ -48,12 +48,12 @@ const { todayTerm, dayOfTerm } = useTerm()
 
 .preface__statement {
   grid-column: 3 / span 9;
-  font-family: var(--font-display);
+  font-family: var(--font-text);
   font-weight: 400;
   font-size: clamp(1.5rem, 3.1vw, 2.5rem);
   line-height: 1.7;
   letter-spacing: 0.04em;
-  text-wrap: pretty;
+  /* text-wrap: pretty; */
 }
 .preface__statement em {
   font-style: normal;

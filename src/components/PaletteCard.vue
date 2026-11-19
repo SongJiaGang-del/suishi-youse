@@ -3,10 +3,25 @@ import { computed } from 'vue'
 import { useCopy } from '../composables/useCopy'
 import { useTerm } from '../composables/useTerm'
 import { contentOf } from '../data/content'
+import { drawTermCard } from '../utils/cardImage'
 import { INK, onColor, PAPER, rgbLabel } from '../utils/color'
 
 const { term, theme } = useTerm()
-const { copy } = useCopy()
+const { copy, notify } = useCopy()
+
+async function saveCard() {
+  try {
+    const blob = await drawTermCard(term.value)
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `岁时有色-${term.value.slug}-${term.value.color.name}.png`
+    a.click()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  } catch {
+    notify('未能生成图片')
+  }
+}
 const note = computed(() => contentOf(term.value).colorNote)
 
 /** 每个节气页都带这四个色彩变量，加上全站固定的宣纸与墨 */
@@ -59,6 +74,9 @@ const swatches = computed(() => [
       <p v-reveal class="palette__more">
         主色之外，各配了一组浅色、深色和压在主色上的文字色，这一页用的就是它们。点任意一格可以复制色值。
       </p>
+      <p v-reveal class="palette__save">
+        <button type="button" class="palette__savebtn" @click="saveCard">保存{{ term.name }}色卡图片</button>
+      </p>
     </div>
   </section>
 </template>
@@ -66,6 +84,8 @@ const swatches = computed(() => [
 <style scoped>
 .palette {
   background: var(--c-wash);
+  /* 本段的次要文字压在节气浅色上，换成更深一档的灰，保证 4.5:1 */
+  --ink-2: var(--ink-2-wash);
 }
 
 .palette__head {
@@ -89,6 +109,8 @@ const swatches = computed(() => [
   min-height: 440px;
   padding: clamp(24px, 3vw, 40px);
   background: var(--c);
+  /* 这张是主色本身，原值照铺；浅色节气靠一圈细线和纸分开 */
+  box-shadow: inset 0 0 0 1px var(--c-edge);
   text-align: left;
   overflow: hidden;
 }
@@ -97,7 +119,7 @@ const swatches = computed(() => [
 }
 .main__role {
   font-size: var(--fs-14);
-  letter-spacing: 0.3em;
+  letter-spacing: 0.2em;
 }
 .main__name {
   align-self: center;
@@ -215,5 +237,22 @@ const swatches = computed(() => [
     grid-column: 3;
     grid-row: 1 / span 2;
   }
+}
+.palette__save {
+  margin-top: var(--sp-3);
+}
+.palette__savebtn {
+  padding: 10px 20px;
+  border: 1px solid currentColor;
+  color: var(--c-deep);
+  letter-spacing: 0.12em;
+}
+.palette__savebtn:hover {
+  background: var(--c-deep);
+  color: var(--c-wash);
+}
+.palette__savebtn:focus-visible {
+  outline: 2px solid var(--c-deep);
+  outline-offset: 3px;
 }
 </style>

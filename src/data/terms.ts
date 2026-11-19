@@ -1,3 +1,5 @@
+import { solarTermDay } from './solarTermDates'
+
 export type SeasonKey = 'spring' | 'summer' | 'autumn' | 'winter'
 
 export interface Term {
@@ -9,7 +11,7 @@ export interface Term {
   slug: string
   /** 交节时太阳所在的黄经，度 */
   longitude: number
-  /** 交节的大致公历日期（用于“今日节气”判断；正式版换成逐年的精确日期表） */
+  /** 交节的大致公历日期，只在 solarTermDates.ts 没有收录的年份才用；有表的年份以 solarTermStart() 为准 */
   month: number
   day: number
   /** 交节日期浮动范围，如 “11月7—8日” */
@@ -126,6 +128,17 @@ export interface Today {
 
 const DAY = 86_400_000
 
+/**
+ * 某年某个节气交节那天的 0 点（本地时区）。
+ * 优先用逐年的精确日期表；表里没有这一年，就退回到节气自带的固定月日。
+ * 交节日期按北京时间的公历日取，再当作本地日历上的同一天，
+ * 所以在别的时区看到的“今日节气”以当地日历为准。
+ */
+export function solarTermStart(term: Term, year: number): number {
+  const exact = solarTermDay(year, term.index)
+  return new Date(year, (exact?.month ?? term.month) - 1, exact?.day ?? term.day).getTime()
+}
+
 /** 给定日期所在的节气，这是第几天，离下一个节气还有几天 */
 export function termOfDate(date: Date): Today {
   const y = date.getFullYear()
@@ -133,7 +146,7 @@ export function termOfDate(date: Date): Today {
   // 取去年、今年、明年的全部交节日，排成一条时间线
   const starts: { term: Term; start: number }[] = []
   for (const year of [y - 1, y, y + 1]) {
-    for (const term of TERMS) starts.push({ term, start: new Date(year, term.month - 1, term.day).getTime() })
+    for (const term of TERMS) starts.push({ term, start: solarTermStart(term, year) })
   }
   starts.sort((a, b) => a.start - b.start)
   let i = 0

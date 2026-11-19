@@ -13,6 +13,7 @@ import {
   type Plate,
 } from '../data/paintings'
 import { onColor } from '../utils/color'
+import { smoothScrollTo } from '../utils/motion'
 
 /**
  * 画里寻色：这个节气配的那幅古画，和画上最接近节气色的一处。
@@ -36,12 +37,36 @@ watch(src, () => {
 const verdict = computed(() => {
   const name = term.value.color.name
   const de = pick.value.de
-  if (de <= 3) return `画上这一处，几乎就是${name}。`
-  if (de <= 7) return `画上这一处，与${name}相近。`
-  if (de <= 10) return `画上这一处，与${name}略有出入。`
-  if (de <= 20) return `这幅画是按题材配的。画上最接近${name}的一处，也只得其意。`
-  return `这幅画是按题材配的，画上并没有${name}。圈出来的只是最接近的一处，差得还远。`
+  const what = pick.value.subject
+  if (de <= 3) return `画里的${what}，几乎就是${name}。`
+  if (de <= 7) return `画里的${what}，与${name}相近。`
+  if (de <= 10) return `画里的${what}，与${name}略有出入。`
+  if (de <= 20) return `这幅画是按题材配的。画里最接近${name}的是${what}，也只得其意。`
+  return `这幅画是按题材配的，画里并没有${name}。圈出来的${what}，只是最接近的一处，差得还远。`
 })
+
+/** 画上的物候标注；点一个，亮出它的名字，能对上三候的就跳到那一候 */
+const marks = computed(() => pick.value.marks)
+const active = ref<number | null>(null)
+watch(pick, () => {
+  active.value = null
+})
+const pentadLabels = ['初候', '二候', '三候']
+function pentadName(i: number | undefined) {
+  return i === undefined ? '' : `${pentadLabels[i]}“${term.value.pentads[i]}”`
+}
+function onMark(i: number) {
+  active.value = active.value === i ? null : i
+  const pe = marks.value[i]?.pentad
+  if (pe === undefined) return
+  const el = document.getElementById(`pentad-${pe}`)
+  if (!el) return
+  smoothScrollTo(el)
+  el.classList.remove('is-flash')
+  void el.offsetWidth
+  el.classList.add('is-flash')
+  setTimeout(() => el.classList.remove('is-flash'), 2600)
+}
 
 /**
  * 画的显示宽度：竖幅按高度封顶，小图最多放大到原图的 1.4 倍，免得发虚。
@@ -67,7 +92,9 @@ const loupe = computed(() => {
   const px = (0.5 - (pick.value.x / 100) * kx) / (1 - kx)
   const py = (0.5 - (pick.value.y / 100) * ky) / (1 - ky)
   return {
-    backgroundImage: `url(${src.value})`,
+    // 图片还没到时只露底色：放大镜和上面的画是同一张图，
+    // 不能让它先把图拉一遍（那样懒加载就白做了，节气页首屏平白多下 100–200 KB）
+    ...(status.value === 'ready' ? { backgroundImage: `url(${src.value})` } : {}),
     backgroundSize: `${zoom.value * 100}% auto`,
     backgroundPosition: `${(px * 100).toFixed(2)}% ${(py * 100).toFixed(2)}%`,
     // 圆心小圈的大小跟着倍数走，始终约等于取平均色的那一小块
@@ -78,7 +105,8 @@ const loupe = computed(() => {
 const alt = computed(
   () =>
     `${label.value}，馆方题名 ${painting.value.subtitle}。` +
-    `${term.value.name}的取色点在画面左起 ${Math.round(pick.value.x)}%、上起 ${Math.round(pick.value.y)}% 处。`,
+    `${term.value.name}的取色点取的是${pick.value.subject}，在画面左起 ${Math.round(pick.value.x)}%、上起 ${Math.round(pick.value.y)}% 处。` +
+    (marks.value.length ? `画上标出了${marks.value.map((m) => m.label).join('、')}。` : ''),
 )
 
 const credit = computed(() => {
@@ -106,6 +134,7 @@ const credit = computed(() => {
               :width="painting.w"
               :height="painting.h"
               :alt="alt"
+              loading="lazy"
               decoding="async"
               referrerpolicy="no-referrer"
               @load="status = 'ready'"
@@ -121,17 +150,44 @@ const credit = computed(() => {
               v-if="status === 'ready'"
               class="mark"
               :class="{ 'mark--left': pick.x > 62 }"
-              :style="{ left: `${pick.x}%`, top: `${pick.y}%` }"
+              :style="{ left: `${pick.x}%`, top: `${pick.y}%`, '--x': pick.x }"
               aria-hidden="true"
             >
-              <span class="mark__tag">{{ term.name }} · {{ term.color.name }}</span>
+              <span class="mark__tag"><span>{{ pick.subject }} ·</span> <span>取色</span></span>
             </span>
+
+            <template v-if="status === 'ready'">
+              <button
+                v-for="(m, i) in marks"
+                :key="i"
+                type="button"
+                class="dot"
+                :class="{ 'is-on': active === i, 'dot--left': m.x > 62, 'dot--link': m.pentad !== undefined }"
+                :style="{ left: `${m.x}%`, top: `${m.y}%`, '--x': m.x }"
+                :aria-label="`${m.label}${m.pentad !== undefined ? '，对应' + pentadName(m.pentad) : ''}`"
+                @click="onMark(i)"
+              >
+                <span aria-hidden="true">{{ i + 1 }}</span>
+                <span class="dot__tag" aria-hidden="true">{{ m.label }}</span>
+              </button>
+            </template>
           </div>
 
           <figcaption class="mount__caption">
             <span>{{ label }}</span>
             <span class="latin">{{ painting.subtitle }}</span>
           </figcaption>
+
+          <ol v-if="marks.length" class="legend" aria-label="画上的物候">
+            <li v-for="(m, i) in marks" :key="i">
+              <button type="button" :class="{ 'is-on': active === i }" @click="onMark(i)">
+                <b aria-hidden="true">{{ i + 1 }}</b>
+                <span class="legend__what">{{ m.label }}</span>
+                <span v-if="m.note" class="legend__note">{{ m.note }}</span>
+                <span v-if="m.pentad !== undefined" class="legend__go">{{ pentadName(m.pentad) }} ↑</span>
+              </button>
+            </li>
+          </ol>
         </figure>
 
         <div class="found">
@@ -143,7 +199,7 @@ const credit = computed(() => {
             <div v-if="status !== 'error'" class="loupe" :style="loupe" aria-hidden="true"><i></i></div>
             <dl class="pair">
               <div :style="{ background: pick.hex, color: onColor(pick.hex) }">
-                <dt>画中取色</dt>
+                <dt>画中取色 · {{ pick.subject }}</dt>
                 <dd class="latin">{{ pick.hex }}</dd>
               </div>
               <div :style="{ background: term.color.hex, color: onColor(term.color.hex) }">
@@ -167,8 +223,8 @@ const credit = computed(() => {
       </div>
 
       <p v-reveal class="plate__note">
-        画是按题材配的：画的是这个节气的物候、花木或景致，才配给这个节气，颜色对不对得上不作为条件。画上圈出来的，是用程序找到的最接近节气色的一处；色差按
-        CIEDE2000 计算，数值越小越接近，取的是那一点附近一小块的平均色，避开了印章、题跋与裱边。网页用图裁去了裱边，标“局部”的只截了原画的一段。中文题名有馆方中文名的照录，没有的据英文题名意译，都不一定是画上原题。
+        画是按题材配的：画的是这个节气的物候、花木或景致，才配给这个节气，颜色对不对得上不作为条件。画上圈出来的，是用程序在画里的主体（花、叶、果、雪）上找到的最接近节气色的一处，绢和纸的底子、印章、题跋与裱边都不算；色差按
+        CIEDE2000 计算，数值越小越接近，取的是那一点附近一小块的平均色。带数字的小圆点标的是画里对得上这个节气的物候，能对上三候的，点一下就跳到那一候；画里没有画到的候，不硬配。网页用图裁去了裱边，标“局部”的只截了原画的一段。中文题名有馆方中文名的照录，没有的据英文题名意译，都不一定是画上原题。
       </p>
     </div>
   </section>
@@ -209,7 +265,12 @@ const credit = computed(() => {
 }
 .leaf {
   position: relative;
+  /* 取色点的标签要按画面宽度算还剩多少地方（cqw），免得压到版心之外 */
+  container-type: inline-size;
   background: #e8e0d0;
+  /* 取色点入场时从 1.8 倍缩小落下，标签跟着放大；不裁掉的话窄屏上这 0.7 秒会把页面撑宽、出现横向滚动 */
+  overflow: hidden;
+  overflow: clip;
 }
 .leaf img {
   display: block;
@@ -244,7 +305,7 @@ const credit = computed(() => {
   align-items: baseline;
   gap: 2px 24px;
   padding-block: 12px 14px;
-  font-family: var(--font-display);
+  font-family: var(--font-text);
   font-size: var(--fs-14);
   letter-spacing: 0.14em;
 }
@@ -292,11 +353,18 @@ const credit = computed(() => {
   font-weight: 600;
   font-size: var(--fs-14);
   letter-spacing: 0.14em;
+  line-height: 1.5;
+  /* 宽度按内容取；放不下时只在“节气名 ·”与“色名”之间折行，最宽不超过取色点到画边的距离 */
+  width: max-content;
+  max-width: calc((100 - var(--x, 50)) * 1cqw - var(--tag-off, 36px));
+}
+.mark__tag > span {
   white-space: nowrap;
 }
 .mark--left .mark__tag {
   left: auto;
   right: calc(100% + 14px);
+  max-width: calc(var(--x, 50) * 1cqw - var(--tag-off, 36px));
 }
 
 @keyframes land {
@@ -321,10 +389,123 @@ const credit = computed(() => {
   }
 }
 
+/* ── 物候标注 ── */
+.dot {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px;
+  padding: 0;
+  border-radius: 50%;
+  background: rgb(26 25 23 / 0.78);
+  color: var(--paper-bright);
+  border: 1.5px solid var(--paper-bright);
+  font-size: var(--fs-12);
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: scale 0.25s var(--ease), background 0.25s;
+}
+/* 点击区比圆点大，手机上好按 */
+.dot::before {
+  content: '';
+  position: absolute;
+  inset: -9px;
+}
+.dot:hover,
+.dot.is-on {
+  scale: 1.2;
+  background: var(--c-deep);
+  z-index: 2;
+}
+.dot:focus-visible {
+  outline: 2px solid var(--paper-bright);
+  outline-offset: 3px;
+}
+.dot__tag {
+  position: absolute;
+  left: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 3px 9px;
+  background: var(--paper-bright);
+  color: var(--ink);
+  box-shadow: 0 0 0 1px rgb(26 25 23 / 0.2);
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+.dot--left .dot__tag {
+  left: auto;
+  right: calc(100% + 8px);
+}
+.dot:hover .dot__tag,
+.dot.is-on .dot__tag,
+.dot:focus-visible .dot__tag {
+  opacity: 1;
+}
+
+.legend {
+  display: grid;
+  gap: 2px;
+  padding-block: 0 var(--sp-2);
+  border-top: 1px solid var(--line);
+  margin-top: 0;
+}
+.legend button {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 12px;
+  width: 100%;
+  padding: 8px 4px;
+  text-align: left;
+  font-size: var(--fs-14);
+  line-height: 1.7;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.legend button:hover,
+.legend button.is-on {
+  background: color-mix(in srgb, var(--c-deep) 8%, transparent);
+}
+.legend b {
+  flex: 0 0 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--paper-bright);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+.legend__what {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+}
+.legend__note {
+  flex: 1 1 14em;
+  color: var(--ink-2);
+}
+.legend__go {
+  margin-left: auto;
+  color: var(--c-deep);
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+
 /* ── 右栏：找到了什么 ── */
 .found__leaf {
   font-size: var(--fs-14);
-  letter-spacing: 0.3em;
+  letter-spacing: 0.2em;
   color: var(--ink-2);
 }
 .found__leaf span {
@@ -492,6 +673,7 @@ const credit = computed(() => {
     font-size: var(--fs-14);
   }
   .mark {
+    --tag-off: 28px;
     width: 30px;
     height: 30px;
     margin: -15px 0 0 -15px;
